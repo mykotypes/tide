@@ -5,51 +5,74 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BreathHUD } from '@/components/breath-hud';
 import { Icon } from '@/components/icon';
+import { OptionListSection } from '@/components/option-list-section';
 import { SessionCompletion } from '@/components/session-completion';
 import { SessionPauseOverlay } from '@/components/session-pause-overlay';
 import { SessionProgress } from '@/components/session-progress';
+import { SessionSettingsSheet } from '@/components/session-settings-sheet';
 import { ShoreScene } from '@/components/shore-scene';
 import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { disablesGuideSound, useAmbientSound } from '@/lib/ambient-sound';
-import { useGuideSound } from '@/lib/guide-sound';
-import { clampCycles, formatCompletionSummary, getSessionLengthBounds } from '@/lib/session-length';
+import { AMBIENT_SOUND_OPTIONS, disablesGuideSound, useAmbientSound, type AmbientSoundId } from '@/lib/ambient-sound';
+import type { CatalogOption } from '@/lib/create-selectable-catalog';
+import { GUIDE_SOUND_OPTIONS, useGuideSound, type GuideSoundId } from '@/lib/guide-sound';
+import { PATTERN_CATALOG, type PatternId } from '@/lib/patterns';
 import { resolvePatternId, resolvePatternPhases } from '@/lib/resolve-pattern';
-import { useScene } from '@/lib/scene';
+import { SCENE_OPTIONS, useScene, type SceneId } from '@/lib/scene';
+import { clampCycles, formatCompletionSummary, getCyclesForPattern, getSessionLengthBounds } from '@/lib/session-length';
+import type { Pattern } from '@/lib/session-engine';
 import { useTheme } from '@/lib/theme';
 import { useAmbientSoundPlayer } from '@/lib/use-ambient-sound-player';
 import { useCompletionHaptics } from '@/lib/use-completion-haptics';
 import { useGuideSoundCues } from '@/lib/use-guide-sound-cues';
 import { useSessionClock } from '@/lib/use-session-clock';
 
-// Ticket 03: Ambient Sound and Guide Sound now play through a session using
-// expo-audio/expo-haptics' own web implementations (navigator.vibrate
-// fallback for Vibrate). There's no picker UI to change them from this
-// screen yet (that's ticket 06) — they read whatever is already persisted
-// in the Profile (ticket 01's hydrateProfile). Scene, the settings sheet,
-// mid-session Pattern switching, and Session Record logging are still not
-// wired — see tickets 05, 06, 07.
+// Ticket 06: the mid-session settings sheet and the Pattern Picker's
+// Customize sheet now both let the user actually change Scene, Ambient
+// Sound, and Guide Sound (persisted via ticket 01's Profile). Session
+// Record logging (ticket 07) still isn't wired.
+//
+// Switching Pattern mid-session discards in-progress breathing, so it's
+// confirmed first — react-native-web's Alert.alert is a no-op stub, so
+// this uses window.confirm directly rather than Alert (native app's
+// choice, per ADR/issue 14).
+const COMPLETION_DISPLAY_MS = 2500;
 
-export default function SessionScreen() {
-  const { pattern: patternParam, cycles: cyclesParam } = useLocalSearchParams<{
-    pattern?: string;
-    cycles?: string;
-  }>();
+const PATTERN_OPTIONS: readonly CatalogOption<PatternId | 'custom'>[] = [
+  ...PATTERN_CATALOG.map((entry) => ({ id: entry.id, label: entry.title })),
+  { id: 'custom', label: 'Custom' },
+];
+
+interface SessionRunnerProps {
+  patternId: PatternId | 'custom';
+  phases: Pattern;
+  cycles: number;
+  sceneId: SceneId;
+  ambientSoundId: AmbientSoundId;
+  guideSoundId: GuideSoundId;
+  guideSoundDisabled: boolean;
+  soundEnabled: boolean;
+  onToggleSound: () => void;
+  onOpenSettings: () => void;
+  onClose: () => void;
+}
+
+function SessionRunner({
+  patternId,
+  phases,
+  cycles,
+  sceneId,
+  ambientSoundId,
+  guideSoundId,
+  guideSoundDisabled,
+  soundEnabled,
+  onToggleSound,
+  onOpenSettings,
+  onClose,
+}: SessionRunnerProps) {
   const theme = useTheme();
-  const patternId = useMemo(() => resolvePatternId(patternParam), [patternParam]);
-  const phases = useMemo(() => resolvePatternPhases(patternId), [patternId]);
-  const bounds = useMemo(() => getSessionLengthBounds(patternId, phases), [patternId, phases]);
-  const cycles = useMemo(() => clampCycles(Number(cyclesParam), bounds), [cyclesParam, bounds]);
-
   const [isPaused, setIsPaused] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const sessionLength = useMemo(() => ({ cycles }), [cycles]);
   const state = useSessionClock(phases, sessionLength, !isPaused);
-
-  const [sceneId] = useScene();
-  const [ambientSoundId] = useAmbientSound();
-  const [guideSoundId] = useGuideSound();
-  const guideSoundDisabled = disablesGuideSound(ambientSoundId);
   const soundActive = soundEnabled && !isPaused;
   useGuideSoundCues(state, guideSoundId, soundActive && !guideSoundDisabled);
   useAmbientSoundPlayer(ambientSoundId, soundActive, state.fullness);
@@ -57,16 +80,12 @@ export default function SessionScreen() {
 
   useEffect(() => {
     if (!state.completed) return;
-    const timer = setTimeout(() => router.replace('/'), 2500);
+    const timer = setTimeout(() => router.replace('/'), COMPLETION_DISPLAY_MS);
     return () => clearTimeout(timer);
   }, [state.completed]);
 
-  function handleClose() {
-    router.back();
-  }
-
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <>
       {sceneId === 'shore' ? <ShoreScene fullness={state.fullness} style={StyleSheet.absoluteFill} /> : null}
 
       <View className="flex-row items-center justify-between px-4 pt-6">
@@ -75,14 +94,19 @@ export default function SessionScreen() {
           size="icon"
           accessibilityLabel={soundEnabled ? 'Mute sound' : 'Unmute sound'}
           accessibilityState={{ selected: soundEnabled }}
-          onPress={() => setSoundEnabled((prev) => !prev)}
+          onPress={onToggleSound}
         >
-          <Icon name="check" size={18} color={soundEnabled ? theme.foreground : theme.mutedForeground} />
+          <Icon name={soundEnabled ? 'volume' : 'volume-off'} size={20} color={theme.foreground} />
         </Button>
 
-        <Button variant="ghost" size="icon" accessibilityLabel="Close session" onPress={handleClose}>
-          <Text className="text-xl">×</Text>
-        </Button>
+        <View className="flex-row gap-1">
+          <Button variant="ghost" size="icon" accessibilityLabel="Session settings" onPress={onOpenSettings}>
+            <Icon name="sliders" size={20} color={theme.foreground} />
+          </Button>
+          <Button variant="ghost" size="icon" accessibilityLabel="Close session" onPress={onClose}>
+            <Icon name="close" size={20} color={theme.foreground} />
+          </Button>
+        </View>
       </View>
 
       <Pressable
@@ -100,7 +124,76 @@ export default function SessionScreen() {
         )}
       </Pressable>
 
-      {isPaused ? <SessionPauseOverlay onResume={() => setIsPaused(false)} onExit={handleClose} /> : null}
+      {isPaused ? <SessionPauseOverlay onResume={() => setIsPaused(false)} onExit={onClose} /> : null}
+    </>
+  );
+}
+
+export default function SessionScreen() {
+  const { pattern: patternParam, cycles: cyclesParam } = useLocalSearchParams<{
+    pattern?: string;
+    cycles?: string;
+  }>();
+  const initialPatternId = useMemo(() => resolvePatternId(patternParam), [patternParam]);
+  const [selectedPatternId, setSelectedPatternId] = useState<PatternId | 'custom'>(initialPatternId);
+
+  const phases = useMemo(() => resolvePatternPhases(selectedPatternId), [selectedPatternId]);
+  const bounds = useMemo(() => getSessionLengthBounds(selectedPatternId, phases), [selectedPatternId, phases]);
+  const cycles = useMemo(() => {
+    if (selectedPatternId === initialPatternId) return clampCycles(Number(cyclesParam), bounds);
+    return clampCycles(getCyclesForPattern(selectedPatternId) ?? bounds.min, bounds);
+  }, [selectedPatternId, initialPatternId, cyclesParam, bounds]);
+
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [sceneId, selectScene] = useScene();
+  const [ambientSoundId, selectAmbientSound] = useAmbientSound();
+  const [guideSoundId, selectGuideSound] = useGuideSound();
+  const guideSoundDisabled = disablesGuideSound(ambientSoundId);
+
+  function requestPatternSwitch(nextPatternId: PatternId | 'custom') {
+    if (nextPatternId === selectedPatternId) return;
+    const nextTitle = PATTERN_OPTIONS.find((option) => option.id === nextPatternId)?.label ?? 'the new Pattern';
+    if (window.confirm(`Switch to ${nextTitle}? Your progress on this session will be lost.`)) {
+      setSelectedPatternId(nextPatternId);
+    }
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-background">
+      <SessionRunner
+        key={selectedPatternId}
+        patternId={selectedPatternId}
+        phases={phases}
+        cycles={cycles}
+        sceneId={sceneId}
+        ambientSoundId={ambientSoundId}
+        guideSoundId={guideSoundId}
+        guideSoundDisabled={guideSoundDisabled}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled((prev) => !prev)}
+        onOpenSettings={() => setSettingsVisible(true)}
+        onClose={() => router.back()}
+      />
+
+      <SessionSettingsSheet visible={settingsVisible} onClose={() => setSettingsVisible(false)}>
+        <OptionListSection title="Pattern" options={PATTERN_OPTIONS} selectedId={selectedPatternId} onSelect={requestPatternSwitch} />
+        <OptionListSection title="Scene" options={SCENE_OPTIONS} selectedId={sceneId} onSelect={selectScene} />
+        <OptionListSection
+          title="Ambient Sound"
+          options={AMBIENT_SOUND_OPTIONS}
+          selectedId={ambientSoundId}
+          onSelect={selectAmbientSound}
+        />
+        {guideSoundDisabled ? null : (
+          <OptionListSection
+            title="Guide Sound"
+            options={GUIDE_SOUND_OPTIONS}
+            selectedId={guideSoundId}
+            onSelect={selectGuideSound}
+          />
+        )}
+      </SessionSettingsSheet>
     </SafeAreaView>
   );
 }

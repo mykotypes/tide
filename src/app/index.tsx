@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BLOB_SHAPE_BY_PATTERN, BreathingBlob } from '@/components/breathing-blob';
 import { DurationField } from '@/components/duration-field';
 import { Icon } from '@/components/icon';
+import { PatternPickerSettingsSheet } from '@/components/pattern-picker-settings-sheet';
 import { SessionLengthSlider } from '@/components/session-length-slider';
 import { Text } from '@/components/ui/text';
 import { customDurationsToPattern, useCustomDurations, type CustomDurations } from '@/lib/custom-pattern';
@@ -81,6 +82,7 @@ export default function PatternPicker() {
   const [lastPatternId, setLastPatternId] = useLastPatternId();
   const [index, setIndex] = useState(() => Math.max(0, slides.findIndex((s) => s.id === lastPatternId)));
   const [cycles, setCycles] = useState(4);
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const slide = slides[index];
 
@@ -99,7 +101,11 @@ export default function PatternPicker() {
           <Text className="text-2xl font-extrabold tracking-tight" style={{ color: C.charcoal }}>
             Tide
           </Text>
-          <Pressable className="flex-row items-center gap-1 py-2" accessibilityLabel="Customize">
+          <Pressable
+            onPress={() => setSettingsVisible(true)}
+            className="flex-row items-center gap-1 py-2"
+            accessibilityLabel="Customize"
+          >
             <Text className="font-semibold" style={{ color: C.charcoal }}>
               Customize
             </Text>
@@ -156,6 +162,8 @@ export default function PatternPicker() {
           </Link>
         </View>
       </View>
+
+      <PatternPickerSettingsSheet visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </SafeAreaView>
   );
 }
