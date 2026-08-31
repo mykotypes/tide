@@ -1,0 +1,20 @@
+.claude/settings.local.json
+
+# Expo / React Native
+node_modules/
+.expo/
+dist/
+web-build/
+
+# macOS
+.DS_Store
+
+# Metro
+.metro-health-check*
+
+# Env
+.env*.local
+
+# @generated expo-cli sync
+expo-env.d.ts
+# @end expo-cli

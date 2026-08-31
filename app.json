@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Tide Web",
+    "slug": "breathing-app-web",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "breathingappweb",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "output": "static",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F5EFE3"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
