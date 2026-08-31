@@ -10,14 +10,23 @@ import { SessionPauseOverlay } from '@/components/session-pause-overlay';
 import { SessionProgress } from '@/components/session-progress';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { disablesGuideSound, useAmbientSound } from '@/lib/ambient-sound';
+import { useGuideSound } from '@/lib/guide-sound';
 import { clampCycles, formatCompletionSummary, getSessionLengthBounds } from '@/lib/session-length';
 import { resolvePatternId, resolvePatternPhases } from '@/lib/resolve-pattern';
 import { useTheme } from '@/lib/theme';
+import { useAmbientSoundPlayer } from '@/lib/use-ambient-sound-player';
+import { useCompletionHaptics } from '@/lib/use-completion-haptics';
+import { useGuideSoundCues } from '@/lib/use-guide-sound-cues';
 import { useSessionClock } from '@/lib/use-session-clock';
 
-// Ticket 02: session flow end-to-end. Scene, Ambient/Guide Sound, the
-// settings sheet, mid-session Pattern switching, and Session Record logging
-// are deliberately not wired yet — see tickets 03, 05, 06, 07.
+// Ticket 03: Ambient Sound and Guide Sound now play through a session using
+// expo-audio/expo-haptics' own web implementations (navigator.vibrate
+// fallback for Vibrate). There's no picker UI to change them from this
+// screen yet (that's ticket 06) — they read whatever is already persisted
+// in the Profile (ticket 01's hydrateProfile). Scene, the settings sheet,
+// mid-session Pattern switching, and Session Record logging are still not
+// wired — see tickets 05, 06, 07.
 
 export default function SessionScreen() {
   const { pattern: patternParam, cycles: cyclesParam } = useLocalSearchParams<{
@@ -34,6 +43,14 @@ export default function SessionScreen() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const sessionLength = useMemo(() => ({ cycles }), [cycles]);
   const state = useSessionClock(phases, sessionLength, !isPaused);
+
+  const [ambientSoundId] = useAmbientSound();
+  const [guideSoundId] = useGuideSound();
+  const guideSoundDisabled = disablesGuideSound(ambientSoundId);
+  const soundActive = soundEnabled && !isPaused;
+  useGuideSoundCues(state, guideSoundId, soundActive && !guideSoundDisabled);
+  useAmbientSoundPlayer(ambientSoundId, soundActive, state.fullness);
+  useCompletionHaptics(state.completed, soundEnabled);
 
   useEffect(() => {
     if (!state.completed) return;
