@@ -3,10 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PatternId } from '@/lib/patterns';
 import { cycleDurationSec, type Pattern } from '@/lib/session-engine';
 
-// Append-only local log of every session run (issue 13), prepping the
-// ground for future stats/streaks even though no UI reads it yet. Ambient
-// Sound and Guide Sound are deliberately excluded — presentation choices,
-// not stats-relevant (CONTEXT.md's Profile / Account entry).
+// Append-only local log of every session run, read by the Statistics
+// screen (src/app/statistics.tsx). Ambient Sound and Guide Sound are
+// deliberately excluded — presentation choices, not stats-relevant
+// (CONTEXT.md's Profile / Account entry).
 export interface SessionRecord {
   timestampMs: number;
   patternId: PatternId | 'custom';

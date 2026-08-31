@@ -62,10 +62,16 @@ function traceEdgePath(ctx: CanvasRenderingContext2D, width: number, base: numbe
   }
 }
 
-function fillBand(ctx: CanvasRenderingContext2D, width: number, height: number, band: Band, fullness: number, t: number): void {
+// Shared by fillBand/strokeEdge: both start from the same traced edge at
+// the band's current wash line, then diverge only in how they paint it.
+function traceBandEdge(ctx: CanvasRenderingContext2D, width: number, height: number, band: Band, fullness: number, t: number): void {
   const base = bandBaseY(height, band, fullness);
   ctx.beginPath();
   traceEdgePath(ctx, width, base, t, band.seed);
+}
+
+function fillBand(ctx: CanvasRenderingContext2D, width: number, height: number, band: Band, fullness: number, t: number): void {
+  traceBandEdge(ctx, width, height, band, fullness, t);
   ctx.lineTo(width, height);
   ctx.lineTo(0, height);
   ctx.closePath();
@@ -74,9 +80,7 @@ function fillBand(ctx: CanvasRenderingContext2D, width: number, height: number, 
 }
 
 function strokeEdge(ctx: CanvasRenderingContext2D, width: number, height: number, band: Band, fullness: number, t: number): void {
-  const base = bandBaseY(height, band, fullness);
-  ctx.beginPath();
-  traceEdgePath(ctx, width, base, t, band.seed);
+  traceBandEdge(ctx, width, height, band, fullness, t);
   ctx.strokeStyle = FOAM_THREAD_COLOR;
   ctx.lineWidth = 2;
   ctx.stroke();
