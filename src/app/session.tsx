@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,12 +8,14 @@ import { Icon } from '@/components/icon';
 import { SessionCompletion } from '@/components/session-completion';
 import { SessionPauseOverlay } from '@/components/session-pause-overlay';
 import { SessionProgress } from '@/components/session-progress';
+import { ShoreScene } from '@/components/shore-scene';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { disablesGuideSound, useAmbientSound } from '@/lib/ambient-sound';
 import { useGuideSound } from '@/lib/guide-sound';
 import { clampCycles, formatCompletionSummary, getSessionLengthBounds } from '@/lib/session-length';
 import { resolvePatternId, resolvePatternPhases } from '@/lib/resolve-pattern';
+import { useScene } from '@/lib/scene';
 import { useTheme } from '@/lib/theme';
 import { useAmbientSoundPlayer } from '@/lib/use-ambient-sound-player';
 import { useCompletionHaptics } from '@/lib/use-completion-haptics';
@@ -44,6 +46,7 @@ export default function SessionScreen() {
   const sessionLength = useMemo(() => ({ cycles }), [cycles]);
   const state = useSessionClock(phases, sessionLength, !isPaused);
 
+  const [sceneId] = useScene();
   const [ambientSoundId] = useAmbientSound();
   const [guideSoundId] = useGuideSound();
   const guideSoundDisabled = disablesGuideSound(ambientSoundId);
@@ -64,6 +67,8 @@ export default function SessionScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
+      {sceneId === 'shore' ? <ShoreScene fullness={state.fullness} style={StyleSheet.absoluteFill} /> : null}
+
       <View className="flex-row items-center justify-between px-4 pt-6">
         <Button
           variant="ghost"
