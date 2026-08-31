@@ -27,6 +27,31 @@ export function hasPhaseChanged(prev: PhaseName | null, next: PhaseName): boolea
   return prev !== next;
 }
 
+export interface GuideCueEnablement {
+  audioEnabled: boolean;
+  hapticsEnabled: boolean;
+}
+
+// Vibrate is a distinct, non-audio feedback channel — often chosen precisely
+// because the user wants a silent cue — so muting session sound shouldn't
+// silence it too. Pausing and Ocean's redundancy rule (disablesGuideSound)
+// still gate both channels equally.
+export function guideCueEnablement({
+  soundEnabled,
+  isPaused,
+  guideSoundDisabled,
+}: {
+  soundEnabled: boolean;
+  isPaused: boolean;
+  guideSoundDisabled: boolean;
+}): GuideCueEnablement {
+  const active = !isPaused && !guideSoundDisabled;
+  return {
+    audioEnabled: active && soundEnabled,
+    hapticsEnabled: active,
+  };
+}
+
 export type GuideSoundWord = 'inhale' | 'hold' | 'exhale';
 
 // Both hold phases (lungs full or empty) speak the same "Hold" cue — the

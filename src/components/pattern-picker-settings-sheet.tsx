@@ -1,4 +1,4 @@
-import { Modal, Pressable, View } from 'react-native';
+import { Modal, Pressable, ScrollView, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { Text } from '@/components/ui/text';
@@ -54,42 +54,52 @@ export function PatternPickerSettingsSheet({ visible, onClose }: PatternPickerSe
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable className="flex-1 justify-end bg-black/40" onPress={onClose}>
-        <Pressable style={{ backgroundColor: C.cream }} className="gap-1 rounded-t-3xl px-6 pb-10 pt-4">
-          <View style={{ backgroundColor: C.creamMuted }} className="mb-2 h-1 w-10 self-center rounded-full" />
-          <Text className="text-xl font-extrabold" style={{ color: C.charcoal }}>
+        {/* Capped below the viewport height (max-h-[85%]) with the option
+            list scrollable below, so Done always stays reachable even when
+            Scene + Ambient + Guide Sound together overflow a short phone
+            screen. */}
+        <Pressable style={{ backgroundColor: C.cream }} className="max-h-[85%] rounded-t-3xl">
+          <View style={{ backgroundColor: C.creamMuted }} className="mb-2 mt-4 h-1 w-10 self-center rounded-full" />
+          <Text className="px-6 text-xl font-extrabold" style={{ color: C.charcoal }}>
             Customize
           </Text>
 
-          <SectionLabel>Scene</SectionLabel>
-          {SCENE_OPTIONS.map((opt) => (
-            <OptionRow key={opt.id} label={opt.label} selected={opt.id === sceneId} onPress={() => selectScene(opt.id)} />
-          ))}
+          <ScrollView className="flex-shrink" contentContainerClassName="gap-1 px-6 pb-2 pt-2" showsVerticalScrollIndicator={false}>
+            <SectionLabel>Scene</SectionLabel>
+            {SCENE_OPTIONS.map((opt) => (
+              <OptionRow key={opt.id} label={opt.label} selected={opt.id === sceneId} onPress={() => selectScene(opt.id)} />
+            ))}
 
-          <SectionLabel>Ambient sound</SectionLabel>
-          {AMBIENT_SOUND_OPTIONS.map((opt) => (
-            <OptionRow
-              key={opt.id}
-              label={opt.label}
-              selected={opt.id === ambientId}
-              onPress={() => selectAmbient(opt.id)}
-            />
-          ))}
+            <SectionLabel>Ambient sound</SectionLabel>
+            {AMBIENT_SOUND_OPTIONS.map((opt) => (
+              <OptionRow
+                key={opt.id}
+                label={opt.label}
+                selected={opt.id === ambientId}
+                onPress={() => selectAmbient(opt.id)}
+              />
+            ))}
 
-          {guideSoundDisabled ? null : (
-            <>
-              <SectionLabel>Guide sound</SectionLabel>
-              {GUIDE_SOUND_OPTIONS.map((opt) => (
-                <OptionRow
-                  key={opt.id}
-                  label={opt.label}
-                  selected={opt.id === guideSoundId}
-                  onPress={() => selectGuideSound(opt.id)}
-                />
-              ))}
-            </>
-          )}
+            {guideSoundDisabled ? null : (
+              <>
+                <SectionLabel>Guide sound</SectionLabel>
+                {GUIDE_SOUND_OPTIONS.map((opt) => (
+                  <OptionRow
+                    key={opt.id}
+                    label={opt.label}
+                    selected={opt.id === guideSoundId}
+                    onPress={() => selectGuideSound(opt.id)}
+                  />
+                ))}
+              </>
+            )}
+          </ScrollView>
 
-          <Pressable onPress={onClose} style={{ backgroundColor: C.charcoal }} className="mt-6 items-center rounded-full py-4">
+          <Pressable
+            onPress={onClose}
+            style={{ backgroundColor: C.charcoal }}
+            className="mx-6 mb-10 mt-2 items-center rounded-full py-4"
+          >
             <Text className="font-bold" style={{ color: C.cream }}>
               Done
             </Text>

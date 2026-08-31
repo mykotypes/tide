@@ -3,7 +3,7 @@ import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 
 import type { GuideSoundId, VoiceAssetKey } from '@/lib/guide-sound';
-import { hasPhaseChanged, isVoiceGuideSoundId, voiceAssetKeyFor } from '@/lib/guide-sound';
+import { guideCueEnablement, hasPhaseChanged, isVoiceGuideSoundId, voiceAssetKeyFor } from '@/lib/guide-sound';
 import type { EngineState, PhaseName } from '@/lib/session-engine';
 
 // The Record<VoiceAssetKey, ...> return type makes a missing or misspelled
@@ -19,31 +19,44 @@ function useVoicePlayers(): Record<VoiceAssetKey, ReturnType<typeof useAudioPlay
   };
 }
 
-export function useGuideSoundCues(state: EngineState, guideSoundId: GuideSoundId, soundEnabled: boolean): void {
+export interface UseGuideSoundCuesOptions {
+  soundEnabled: boolean;
+  isPaused: boolean;
+  guideSoundDisabled: boolean;
+}
+
+export function useGuideSoundCues(
+  state: EngineState,
+  guideSoundId: GuideSoundId,
+  { soundEnabled, isPaused, guideSoundDisabled }: UseGuideSoundCuesOptions
+): void {
   const players = useVoicePlayers();
   const lastPhaseRef = useRef<PhaseName | null>(null);
+  const { audioEnabled, hapticsEnabled } = guideCueEnablement({ soundEnabled, isPaused, guideSoundDisabled });
 
   useEffect(() => {
     const changed = hasPhaseChanged(lastPhaseRef.current, state.phase);
     lastPhaseRef.current = state.phase;
-    if (!changed || !soundEnabled) return;
+    if (!changed) return;
 
     if (isVoiceGuideSoundId(guideSoundId)) {
+      if (!audioEnabled) return;
       const player = players[voiceAssetKeyFor(guideSoundId, state.phase)];
       player.seekTo(0).then(() => player.play());
     } else if (guideSoundId === 'vibrate') {
+      if (!hapticsEnabled) return;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     // 'none' fires no cue at all.
     // `players` is a new object each render, but useAudioPlayer's individual
     // player instances are stable for the component's lifetime, so closing
     // over a fresh `players` on every dep change (not every render) is fine.
-  }, [state.phase, guideSoundId, soundEnabled, players]);
+  }, [state.phase, guideSoundId, audioEnabled, hapticsEnabled, players]);
 
   useEffect(() => {
-    if (soundEnabled) return;
+    if (audioEnabled) return;
     // Immediately stop an in-flight cue on mute, rather than letting it play
     // out — a spoken word finishing after tapping mute would read as broken.
     for (const player of Object.values(players)) player.pause();
-  }, [soundEnabled, players]);
+  }, [audioEnabled, players]);
 }

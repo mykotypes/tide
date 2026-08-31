@@ -1,6 +1,7 @@
 import {
   GUIDE_SOUND_OPTIONS,
   DEFAULT_GUIDE_SOUND_ID,
+  guideCueEnablement,
   hasPhaseChanged,
   isGuideSoundId,
   isVoiceGuideSoundId,
@@ -77,6 +78,44 @@ describe('wordForPhase', () => {
   it('speaks "hold" for either hold phase', () => {
     expect(wordForPhase('hold-full')).toBe('hold');
     expect(wordForPhase('hold-empty')).toBe('hold');
+  });
+});
+
+describe('guideCueEnablement', () => {
+  it('enables both audio and haptics when sound is on, unpaused, and undisabled', () => {
+    expect(guideCueEnablement({ soundEnabled: true, isPaused: false, guideSoundDisabled: false })).toEqual({
+      audioEnabled: true,
+      hapticsEnabled: true,
+    });
+  });
+
+  it('keeps haptics enabled when sound is muted — vibrate is not an audio channel', () => {
+    expect(guideCueEnablement({ soundEnabled: false, isPaused: false, guideSoundDisabled: false })).toEqual({
+      audioEnabled: false,
+      hapticsEnabled: true,
+    });
+  });
+
+  it('disables both while paused, regardless of the mute state', () => {
+    expect(guideCueEnablement({ soundEnabled: true, isPaused: true, guideSoundDisabled: false })).toEqual({
+      audioEnabled: false,
+      hapticsEnabled: false,
+    });
+    expect(guideCueEnablement({ soundEnabled: false, isPaused: true, guideSoundDisabled: false })).toEqual({
+      audioEnabled: false,
+      hapticsEnabled: false,
+    });
+  });
+
+  it('disables both when the guide sound is disabled (e.g. Ocean ambient), regardless of the mute state', () => {
+    expect(guideCueEnablement({ soundEnabled: true, isPaused: false, guideSoundDisabled: true })).toEqual({
+      audioEnabled: false,
+      hapticsEnabled: false,
+    });
+    expect(guideCueEnablement({ soundEnabled: false, isPaused: false, guideSoundDisabled: true })).toEqual({
+      audioEnabled: false,
+      hapticsEnabled: false,
+    });
   });
 });
 

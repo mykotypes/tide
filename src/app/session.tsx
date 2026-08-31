@@ -75,7 +75,7 @@ function SessionRunner({
   const sessionLength = useMemo(() => ({ cycles }), [cycles]);
   const state = useSessionClock(phases, sessionLength, !isPaused);
   const soundActive = soundEnabled && !isPaused;
-  useGuideSoundCues(state, guideSoundId, soundActive && !guideSoundDisabled);
+  useGuideSoundCues(state, guideSoundId, { soundEnabled, isPaused, guideSoundDisabled });
   useAmbientSoundPlayer(ambientSoundId, soundActive, state.fullness);
   useCompletionHaptics(state.completed, soundEnabled);
 
