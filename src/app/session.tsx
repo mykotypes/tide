@@ -19,6 +19,7 @@ import { PATTERN_CATALOG, type PatternId } from '@/lib/patterns';
 import { resolvePatternId, resolvePatternPhases } from '@/lib/resolve-pattern';
 import { SCENE_OPTIONS, useScene, type SceneId } from '@/lib/scene';
 import { clampCycles, formatCompletionSummary, getCyclesForPattern, getSessionLengthBounds } from '@/lib/session-length';
+import { buildSessionRecord, logSessionRecord } from '@/lib/session-record';
 import type { Pattern } from '@/lib/session-engine';
 import { useTheme } from '@/lib/theme';
 import { useAmbientSoundPlayer } from '@/lib/use-ambient-sound-player';
@@ -80,9 +81,19 @@ function SessionRunner({
 
   useEffect(() => {
     if (!state.completed) return;
+    logSessionRecord(buildSessionRecord(patternId, cycles, phases));
     const timer = setTimeout(() => router.replace('/'), COMPLETION_DISPLAY_MS);
     return () => clearTimeout(timer);
-  }, [state.completed]);
+  }, [state.completed, patternId, cycles, phases]);
+
+  // A session left before its target cycle count finishes is still logged
+  // (with cycles completed short of target) rather than dropped — see
+  // CONTEXT.md's Profile / Account entry. Guarded by !state.completed so
+  // closing right after the completion screen appears doesn't double-log.
+  function handleClose() {
+    if (!state.completed) logSessionRecord(buildSessionRecord(patternId, state.cycleIndex, phases));
+    onClose();
+  }
 
   return (
     <>
@@ -103,7 +114,7 @@ function SessionRunner({
           <Button variant="ghost" size="icon" accessibilityLabel="Session settings" onPress={onOpenSettings}>
             <Icon name="sliders" size={20} color={theme.foreground} />
           </Button>
-          <Button variant="ghost" size="icon" accessibilityLabel="Close session" onPress={onClose}>
+          <Button variant="ghost" size="icon" accessibilityLabel="Close session" onPress={handleClose}>
             <Icon name="close" size={20} color={theme.foreground} />
           </Button>
         </View>
@@ -124,7 +135,7 @@ function SessionRunner({
         )}
       </Pressable>
 
-      {isPaused ? <SessionPauseOverlay onResume={() => setIsPaused(false)} onExit={onClose} /> : null}
+      {isPaused ? <SessionPauseOverlay onResume={() => setIsPaused(false)} onExit={handleClose} /> : null}
     </>
   );
 }

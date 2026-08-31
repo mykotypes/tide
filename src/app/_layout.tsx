@@ -34,6 +34,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="session" options={{ presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="statistics" />
       </Stack>
       <PortalHost />
     </ThemeProvider>

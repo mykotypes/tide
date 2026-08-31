@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BLOB_SHAPE_BY_PATTERN, BreathingBlob } from '@/components/breathing-blob';
@@ -101,16 +101,27 @@ export default function PatternPicker() {
           <Text className="text-2xl font-extrabold tracking-tight" style={{ color: C.charcoal }}>
             Tide
           </Text>
-          <Pressable
-            onPress={() => setSettingsVisible(true)}
-            className="flex-row items-center gap-1 py-2"
-            accessibilityLabel="Customize"
-          >
-            <Text className="font-semibold" style={{ color: C.charcoal }}>
-              Customize
-            </Text>
-            <Icon name="chevron-down" size={14} color={C.charcoal} />
-          </Pressable>
+          <View className="flex-row items-center gap-4">
+            {/* Web adaptation: Statistics gets its own icon on the initial
+                screen instead of living inside the Customize sheet. */}
+            <Pressable
+              onPress={() => router.push('/statistics')}
+              className="h-8 w-8 items-center justify-center"
+              accessibilityLabel="Statistics"
+            >
+              <Icon name="chart-bar" size={18} color={C.charcoal} />
+            </Pressable>
+            <Pressable
+              onPress={() => setSettingsVisible(true)}
+              className="flex-row items-center gap-1 py-2"
+              accessibilityLabel="Customize"
+            >
+              <Text className="font-semibold" style={{ color: C.charcoal }}>
+                Customize
+              </Text>
+              <Icon name="chevron-down" size={14} color={C.charcoal} />
+            </Pressable>
+          </View>
         </View>
 
         <View className="flex-1 items-center justify-center gap-4">
